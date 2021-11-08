@@ -119,7 +119,8 @@ Public Function insert(table As String, columns As String, ParamArray values() A
 On Error GoTo handleError
     
     Dim insertQry, value, valueStr, columnCount, argumentCount As Variant
-
+    Dim aux As String
+    
     valueStr = ""
     argumentCount = (UBound(values) - LBound(values) + 1)
     columnCount = (UBound(Split(columns, ",")) - LBound(Split(columns, ",")) + 1)
@@ -134,11 +135,11 @@ On Error GoTo handleError
             Case VarType(value) = vbLong
                 valueStr = valueStr & value & ","
             Case VarType(value) = vbDouble
-                valueStr = valueStr & value & ","
+                valueStr = valueStr & Replace(CStr(CDbl(value)), ",", ".") & ","
             Case VarType(value) = vbSingle
                 valueStr = valueStr & value & ","
             Case VarType(value) = vbDecimal
-                valueStr = valueStr & value & ","
+                valueStr = valueStr & Replace(CStr(CDec(value)), ",", ".") & ","
             Case VarType(value) = vbString
                 valueStr = valueStr & "'" & value & "',"
             Case VarType(value) = vbDate
