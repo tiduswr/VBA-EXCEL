@@ -10,7 +10,7 @@ Attribute VB_Exposed = False
 '------------CONTROLE DE LIST VIEW CUSTOMIZADA:
 'Autor: Harllem Nascimento(TidusWR)
 'E-Mail: harllemnascimento@gmail.com
-'Data de finalização do projeto: 25/10/2021
+'Data de finalização do projeto: 08/11/2021
 
 '------------Definições:
 ' "r" significa "row" ou "linha";
@@ -42,6 +42,8 @@ Attribute VB_Exposed = False
 'Você pode utilizar outros métodos do ListBox que são publicos da forma que quiser, mas com o construtor preenchido
 'ela ja vai executar todas as ações que foi programada, contanto que sejam passados os parametros corretamente
 
+'Se o dataSource() começar na coluna 0, vai ser considerado a coluna 0 como Key
+'No Construtor o argumento keyColumn diz respeito a coluna que será usada como padrão para busca e ordennação!
 '------------------------------------------------------------------------------------------------------------------------
 Option Explicit
 
@@ -49,13 +51,14 @@ Private Type list_objects
     vPrefixo As String
     vPrefixoClick As String
     vPrefixoBackground As String
-    vQtdLinhas As Integer
-    vQtdColunas As Integer
-    
+    vQtdLinhas As Long
+    vQtdColunas As Long
+
+    vKeys() As Variant
     vSource() As Variant
     vFilter() As Variant
     vBackup() As Variant
-    vColWithPicture As Integer
+    vColWithPicture As Long
     vInitialized As Boolean
 End Type
 
@@ -77,12 +80,13 @@ Private WithEvents labelZA As MSForms.label
 Attribute labelZA.VB_VarHelpID = -1
 Private WithEvents txtbFilter As MSForms.TextBox
 Attribute txtbFilter.VB_VarHelpID = -1
-Private picCol, keyCol As Integer
+Private picCol, keyCol As Long
 Private rows() As CustomLabel
 Private cols() As CustomLabel
 Private sourceinfo As sourceinfo
 Private objects As list_objects
 Private pgSkp As Boolean
+Private hasKeyCol As Boolean
 
 'Confirgurações
 Public Property Get objPrefixo() As String
@@ -100,16 +104,16 @@ End Property
 Public Property Get srcQtdColunas() As Long
     srcQtdColunas = sourceinfo.vQtdCol
 End Property
-Public Property Get objQtdLinhas() As Integer
+Public Property Get objQtdLinhas() As Long
     objQtdLinhas = objects.vQtdLinhas
 End Property
-Public Property Get objQtdColunas() As Integer
+Public Property Get objQtdColunas() As Long
     objQtdColunas = objects.vQtdColunas
 End Property
-Public Property Get keyColumn() As Integer
+Public Property Get keyColumn() As Long
     keyColumn = keyCol
 End Property
-Public Function setKeyColumn(ByVal newKey As Integer) As Boolean
+Public Function setKeyColumn(ByVal newKey As Long) As Boolean
     If newKey <> picCol And newKey > 0 Then
         keyCol = newKey
         setKeyColumn = True
@@ -117,13 +121,37 @@ Public Function setKeyColumn(ByVal newKey As Integer) As Boolean
         setKeyColumn = False
     End If
 End Function
-'Métodos
-Public Function construtor(ByVal keyColumn As Integer, _
+Public Function getValuesByColumnID(ByVal value As Variant) As Variant()
+    If Not IsEmpty(objects.vSource) And objects.vInitialized And hasKeyCol Then
+        Dim i As Long
+        Dim initRow As Long: initRow = 1
+        Dim ret() As Variant
+        Dim initCol As Long: initCol = LBound(objects.vSource, 2)
+        
+        For i = initRow To sourceinfo.vQtdLin
+            If objects.vSource(i, initCol) = value Then
+                ReDim ret(initCol To sourceinfo.vQtdCol) As Variant
+                Dim j As Long
+                
+                For j = initCol To sourceinfo.vQtdCol
+                    ret(j) = objects.vSource(i, j)
+                Next j
+                
+                getValuesByColumnID = ret
+                Exit Function
+            End If
+        Next i
+    End If
+    getValuesByColumnID = ret
+End Function
+
+'Métodos -> no Construtor o argumento keyColumn diz respeito a coluna que será usada como padrão para busca e ordennação!
+Public Function construtor(ByVal keyColumn As Long, _
                             ByVal prefixo As String, _
                             ByVal prefixoClick As String, _
                             ByVal prefixoBackground As String, _
-                            ByVal linhas As Integer, _
-                            ByVal colunas As Integer, _
+                            ByVal linhas As Long, _
+                            ByVal colunas As Long, _
                             ByRef form As UserForm, _
                             ByRef backgroundLabelName As String, _
                             ByRef dataSource() As Variant, _
@@ -131,18 +159,19 @@ Public Function construtor(ByVal keyColumn As Integer, _
                             Optional ByRef lblAz As MSForms.label = Nothing, _
                             Optional ByRef lblZa As MSForms.label = Nothing, _
                             Optional ByRef textBoxFilter As MSForms.TextBox = Nothing, _
-                            Optional pictureColumn As Integer = 0, _
+                            Optional pictureColumn As Long = 0, _
                             Optional backColor As Long = vbBlue, _
                             Optional captionColor As Long = vbWhite, _
                             Optional captionBold As Boolean = False, _
                             Optional ByVal pageSkipMode As Boolean = False)
 
-    Dim i As Integer, j As Integer
+    Dim i As Long, j As Long
     
-    If LBound(dataSource, 1) = 0 Or LBound(dataSource, 2) = 0 Then
+    If LBound(dataSource, 1) = 0 Then
         MsgBox "A propriedade dataSource() tem que receber um array iniciando obrigatoriamente pelo numero 1!", vbCritical, "Erro!"
         Exit Function
     End If
+    hasKeyCol = (LBound(dataSource, 2) = 0)
     
     objects.vPrefixo = prefixo
     objects.vPrefixoBackground = prefixoBackground
@@ -155,15 +184,10 @@ Public Function construtor(ByVal keyColumn As Integer, _
     sourceinfo.vQtdLin = UBound(dataSource, 1)
     sourceinfo.vQtdCol = UBound(dataSource, 2)
     
-    ReDim objects.vSource(1 To sourceinfo.vQtdLin, 1 To sourceinfo.vQtdCol)
-    
-    For i = 1 To sourceinfo.vQtdLin
-        For j = 1 To sourceinfo.vQtdCol
-            objects.vSource(i, j) = dataSource(i, j)
-        Next j
-    Next i
+    objects.vSource = dataSource
     objects.vBackup = objects.vSource
     objects.vInitialized = True
+    If hasKeyCol Then ReDim objects.vKeys(1 To objects.vQtdLinhas + 1)
     
     ''Scoll da lista
     Set scrollList = scroll
@@ -203,8 +227,8 @@ Private Function setValue(ByVal controlRef As String, ByVal value As String, ByV
     If DataType = "picture" Then vForm.Controls(objects.vPrefixo & controlRef).Picture = LoadPicture(value)
 End Function
 
-Private Function setVisible(ByVal row As Integer, ByVal isVisible As Boolean)
-    Dim i As Integer
+Private Function setVisible(ByVal row As Long, ByVal isVisible As Boolean)
+    Dim i As Long
     
     For i = 1 To objects.vQtdColunas
         vForm.Controls(objects.vPrefixo & "r" & row & "c" & i).Visible = isVisible
@@ -213,14 +237,22 @@ Private Function setVisible(ByVal row As Integer, ByVal isVisible As Boolean)
     vForm.Controls(objects.vPrefixoBackground & "r" & row).Visible = isVisible
 End Function
 
-Public Function update(ByVal BubSrtMetodo As String, ByVal BubSrtColumn As String, Optional ByVal colWithPic As Integer = 0)
+Public Function getKeyFromListRow(ByVal vRow As Long) As Variant
+    If (vRow > 0 And vRow <= objects.vQtdLinhas) And hasKeyCol Then
+        getKeyFromListRow = objects.vKeys(vRow)
+    Else
+        getKeyFromListRow = -1
+    End If
+End Function
+
+Public Function update(ByVal BubSrtMetodo As String, ByVal BubSrtColumn As String, Optional ByVal colWithPic As Long = 0)
     
     If Not objects.vInitialized Then Exit Function
     
-    Dim linCharge As Integer
-    Dim firstCharge As Integer
-    Dim colCharge As Integer
-    Dim i As Integer, j As Integer
+    Dim linCharge As Long
+    Dim firstCharge As Long
+    Dim colCharge As Long
+    Dim i As Long, j As Long
     
     firstCharge = 1
     
@@ -251,11 +283,14 @@ Public Function update(ByVal BubSrtMetodo As String, ByVal BubSrtColumn As Strin
         For j = 1 To colCharge
             If colWithPic = 0 Then
                 setValue "r" & i & "c" & j, objects.vSource(i + (firstCharge - 1), j), "string"
+                If hasKeyCol Then objects.vKeys(i) = objects.vSource(i, 0)
             Else
                 If j = colWithPic Then
                     setValue "r" & i & "c" & j, objects.vSource(i + (firstCharge - 1), j), "picture"
+                    If hasKeyCol Then objects.vKeys(i) = objects.vSource(i, 0)
                 Else
                     setValue "r" & i & "c" & j, objects.vSource(i + (firstCharge - 1), j), "string"
+                    If hasKeyCol Then objects.vKeys(i) = objects.vSource(i, 0)
                 End If
             End If
         Next j
@@ -268,7 +303,7 @@ End Function
 
 Public Function loadData_inRange(ByVal fromLine As Long)
     If Not objects.vInitialized Then Exit Function
-    Dim i As Integer, j As Integer, k As Integer
+    Dim i As Long, j As Long, k As Long
     'Variavel k para andar nos controles de linhas do listbox
     k = 1
     If fromLine <= sourceinfo.vQtdLin And fromLine >= 1 Then
@@ -277,16 +312,20 @@ Public Function loadData_inRange(ByVal fromLine As Long)
                 If i <= sourceinfo.vQtdLin Then
                     If objects.vColWithPicture = 0 Then
                         setValue "r" & k & "c" & j, objects.vSource(i, j), "string"
+                        If hasKeyCol Then objects.vKeys(k) = objects.vSource(i, 0)
                     Else
                         If j = objects.vColWithPicture Then
                             setValue "r" & k & "c" & j, objects.vSource(i, j), "picture"
+                            If hasKeyCol Then objects.vKeys(k) = objects.vSource(i, 0)
                         Else
                             setValue "r" & k & "c" & j, objects.vSource(i, j), "string"
+                            If hasKeyCol Then objects.vKeys(k) = objects.vSource(i, 0)
                         End If
                     End If
                     setVisible k, True
                 Else
                     setValue "r" & k & "c" & j, "", "string"
+                    If hasKeyCol Then objects.vKeys(k) = -1
                     setVisible k, False
                 End If
             Next j
@@ -295,7 +334,7 @@ Public Function loadData_inRange(ByVal fromLine As Long)
     End If
 End Function
 
-Private Function BubbleSort(ByRef MyArray() As Variant, ByVal ColumnToCompare As Integer, ByVal metodo As String)
+Private Function BubbleSort(ByRef MyArray() As Variant, ByVal ColumnToCompare As Long, ByVal metodo As String)
     'Sorts a one-dimensional VBA array from smallest to largest
     'using the bubble sort algorithm.
     Dim i As Long, j As Long, k As Long
@@ -329,7 +368,7 @@ Private Function BubbleSort(ByRef MyArray() As Variant, ByVal ColumnToCompare As
     End If
 End Function
 
-Public Function filterBy(ByVal Key As String, ByVal ColumnToCompare As Integer)
+Public Function filterBy(ByVal Key As String, ByVal ColumnToCompare As Long)
     
     If Not objects.vInitialized Then Exit Function
     Dim i As Long, j As Long, fRow As Long
@@ -356,7 +395,7 @@ Public Function filterBy(ByVal Key As String, ByVal ColumnToCompare As Integer)
     Next i
     
     If fRow > 1 Then
-        ReDim objects.vFilter(1 To fRow - 1, 1 To sourceinfo.vQtdCol) As Variant
+        ReDim objects.vFilter(1 To fRow - 1, LBound(objects.vSource, 2) To sourceinfo.vQtdCol) As Variant
         For i = 1 To fRow - 1
             For j = LBound(objects.vFilter, 2) To UBound(objects.vFilter, 2)
                 objects.vFilter(i, j) = objects.vSource(matchs(i), j)
@@ -382,7 +421,7 @@ Public Function ResetFilter()
     End If
 End Function
 
-Public Function getRowDataFromLabel(ByVal row As Integer, ByVal col As Integer)
+Public Function getRowDataFromLabel(ByVal row As Long, ByVal col As Long)
     getRowDataFromLabel = vForm.Controls(objects.vPrefixo & "r" & row & "c" & col).Caption
 End Function
 
@@ -426,7 +465,7 @@ Private Sub scrollList_Change()
 End Sub
 
 Private Function clearEffects()
-    Dim i, j As Integer
+    Dim i, j As Long
     For i = 1 To objects.vQtdLinhas
         rows(i).restoreTheme
         For j = 1 To objects.vQtdColunas
@@ -435,7 +474,7 @@ Private Function clearEffects()
     Next i
 End Function
 
-Private Function attScroll(ByVal sourceQtdLin As Integer)
+Private Function attScroll(ByVal sourceQtdLin As Long)
     If Not scrollList Is Nothing Then
         scrollList.Min = 1
         If sourceQtdLin > objects.vQtdLinhas Then
