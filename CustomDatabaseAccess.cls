@@ -10,14 +10,14 @@ Attribute VB_Exposed = False
 '------------Facilitador de Manipulçaão de Banco de Dados ACCESS:
 'Autor: Harllem Nascimento(TidusWR)
 'E-Mail: harllemnascimento@gmail.com
-'Data de finalização do projeto: 08/11/2021
+'Data de finalização do projeto: 09/11/2021
 
 Option Explicit
-Private CurrentDb As New ADODB.Connection
+Private CurrentDb As ADODB.Connection
 Private DBIsOpen As Boolean
-Private rs As New ADODB.Recordset
+Private rs As ADODB.Recordset
 
-Public Function conect(ByVal pathStr As String, Optional provider As String = "Microsoft.ACE.OLEDB.12.0")
+Public Function connect(ByVal pathStr As String, Optional provider As String = "Microsoft.ACE.OLEDB.12.0")
     Set CurrentDb = New ADODB.Connection
     With CurrentDb
         .provider = provider
@@ -27,13 +27,14 @@ Public Function conect(ByVal pathStr As String, Optional provider As String = "M
     DBIsOpen = True
 End Function
 
-Public Function disconect()
+Public Function disconnect()
     If DBIsOpen Then
         CurrentDb.Close
         If rs <> Nothing Then rs.Close
         
         Set rs = Nothing
         Set CurrentDb = Nothing
+        DBIsOpen = False
     End If
 End Function
 
@@ -64,7 +65,17 @@ Public Function getRecordSetAsArray() As Variant()
 End Function
 
 Public Function createRecordsetByQuery(ByVal query As String) As Boolean
-
+    
+    If Not DBIsOpen Then
+        createRecordsetByQuery = False
+        Exit Function
+    End If
+    
+    If rs <> Nothing Then
+        rs.Close
+        Set rs = Nothing
+    End If
+    
     Set rs = New ADODB.Recordset
     rs.Open query, CurrentDb, adOpenKeyset, adLockOptimistic, adCmdText
     rs.MoveFirst
@@ -74,8 +85,8 @@ Public Function createRecordsetByQuery(ByVal query As String) As Boolean
 End Function
 
 Public Function getRSCount() As Integer
-
-    If rs = Nothing Then Exit Function
+    
+    If Not DBIsOpen Or rs = Nothing Then Exit Function
 
     On Error GoTo handleError
     rs.MoveLast
@@ -86,14 +97,14 @@ Public Function getRSCount() As Integer
     Exit Function
     
 handleError:
-    getRSCount = rs.RecordCount
+    getRSCount = 0
     Exit Function
 
 End Function
 
 Public Function getRSColumnCount() As Integer
 
-    If rs = Nothing Then Exit Function
+    If Not DBIsOpen Or rs = Nothing Then Exit Function
 
     On Error GoTo handleError
     rs.MoveLast
@@ -104,12 +115,12 @@ Public Function getRSColumnCount() As Integer
     Exit Function
     
 handleError:
-    getRSColumnCount = -1
+    getRSColumnCount = 0
     Exit Function
 
 End Function
 
-''As funções abaixo foram pegas e adptadas do seguinte repositório:
+''As funções abaixo foram adptadas do seguinte repositório:
 ''
 ''@WyattCast44 -> On Github
 ''https://github.com/wyattcast44-side-project-graveyard/MS-Access-VBA-Libraries/tree/master/libraries/src/sql
@@ -177,7 +188,16 @@ On Error GoTo handleError
     If columnName <> "" Then
         
         If IsNumeric(identifier) Then
-            qry = "DELETE * FROM " & table & " WHERE(" & columnName & " = " & identifier & ")"
+            Select Case True
+                Case VarType(identifier) = vbDouble
+                    qry = "DELETE * FROM " & table & " WHERE(" & columnName & " = " & _
+                            Replace(CStr(CDbl(identifier)), ",", ".") & ")"
+                Case VarType(identifier) = vbDecimal
+                    qry = "DELETE * FROM " & table & " WHERE(" & columnName & " = " & _
+                            Replace(CStr(CDbl(identifier)), ",", ".") & ")"
+                Case Else
+                    qry = "DELETE * FROM " & table & " WHERE(" & columnName & " = " & identifier & ")"
+            End Select
         Else
             qry = "DELETE * FROM " & table & " WHERE(" & columnName & " = '" & CStr(identifier) & "')"
         End If
@@ -197,11 +217,13 @@ handleError:
     
 End Function
 
-Public Function doesTableContain(table As String, searchCriteria As String, searchColumn As String, _
-    Optional fuzzyMatch As Boolean = True) As Boolean
+Public Function tableContain(table As String, searchCriteria As String, searchColumn As String, _
+                                    Optional fuzzyMatch As Boolean = False) As Boolean
+    
+    On Error GoTo handleError
     
     Dim selectQry As String
-    Dim rs As Recordset
+    Dim auxRs As ADODB.Recordset
     
     If fuzzyMatch Then
         selectQry = "SELECT * FROM " & table & " WHERE " & searchColumn & " LIKE '*" & searchCriteria & "*'"
@@ -209,14 +231,17 @@ Public Function doesTableContain(table As String, searchCriteria As String, sear
         selectQry = "SELECT * FROM " & table & " WHERE " & searchColumn & " = '" & searchCriteria & "'"
     End If
     
-    Set rs = CurrentDb.OpenRecordset(selectQry)
+    auxRs.Open selectQry, CurrentDb, adOpenKeyset, adLockOptimistic, adCmdText
+    auxRs.MoveFirst
     
-    If getRSCount(rs) <> 0 Then
-        doesTableContain = True
-    Else
-        doesTableContain = False
-    End If
+    tableContain = (Not auxRs.EOF) And (auxRs.RecordCount <> 0)
     
-    Set rs = Nothing
+    If auxRs <> Nothing Then auxRs.Close
+    Set auxRs = Nothing
+    Exit Function
     
+handleError:
+    If auxRs <> Nothing Then auxRs.Close
+    Set auxRs = Nothing
+    tableContain = False
 End Function
