@@ -12,6 +12,9 @@ Option Explicit
 'Em 30 de julho de 2021 foi concluida a versão final do projeto
 'contato: harllemnascimento@gmail.com
 
+'Features:
+'Em 25 de Novembro de 2021 foi inserida a opção de argumento para verificar se a tabela tem Cabeçalho
+
 'Atributos
 Private Type dimensions
     altura As Integer
@@ -27,6 +30,7 @@ Private Type tableProperties
     color As String
     intervalo As intervalo
     tiposColunas() As String
+    hasHeader As Boolean
 End Type
 Private Type properties
     nome As String
@@ -85,9 +89,21 @@ Public Function construtor(ByVal fieldExpression As String) As Boolean
                 auxStr = returnStringDelimited("(", ")", fieldExpression)
                 auxArr = Split(auxStr, ";")
                 
+                If UBound(auxArr, 1) <> 4 Then
+                    MsgBox "Informe todos os argumentos da tabela na coluna " & propriedades.nome & "!", _
+                            vbCritical, "Erro!"
+                    construtor = False
+                    Exit Function
+                End If
+                
                 propriedades.tabela.source = auxArr(0)
                 propriedades.tabela.colunaCriterio = CInt(auxArr(1))
                 propriedades.tabela.color = auxArr(2)
+                If auxArr(2) = "sem_cabecalho" Then
+                    propriedades.tabela.hasHeader = False
+                Else
+                    propriedades.tabela.hasHeader = True
+                End If
                 
                 If InStr(1, auxArr(3), "-", 0) <> 0 Then
                     Dim auxIntervalo() As String: auxIntervalo = Split(auxArr(3), "-")
@@ -170,6 +186,9 @@ End Function
 Public Function getTableTiposColunas() As String()
     getTableTiposColunas = propriedades.tabela.tiposColunas
 End Function
+Public Function tableHasHeader() As Boolean
+    tableHasHeader = propriedades.tabela.hasHeader
+End Function
 Public Function getArgumento() As String
     getArgumento = propriedades.arrgumento
 End Function
@@ -223,3 +242,4 @@ Private Function countColumns(ByVal namePlan As String) As Integer
 erro:
     countColumns = -1
 End Function
+

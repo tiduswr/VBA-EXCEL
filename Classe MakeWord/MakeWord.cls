@@ -12,6 +12,9 @@ Option Explicit
 'Em 19 de maio de 2021 foi concluida a versão final do projeto
 'contato: harllemnascimento@gmail.com
 
+'Features:
+'Em 25 de Novembro de 2021 foi inserida a opção de usar uma tabela ja criada do word para inserir dados
+
 '------------------------------------------
 'Tipo usado para o tema das colunas do replaceWithTable():
 
@@ -227,7 +230,9 @@ Public Function replaceWithTable(ByRef arr() As Variant, ByVal ReplaceKey As Str
                             Optional HeaderTableColor As Long = vbBlue, _
                             Optional HeaderFontColor As Long = vbWhite, _
                             Optional HeaderAlignment As Long = wdAlignParagraphCenter, _
-                            Optional semTemas As Boolean = False) As Boolean
+                            Optional semTemas As Boolean = False, _
+                            Optional tableExist As Boolean = False, _
+                            Optional tableHasHeader As Boolean = True) As Boolean
     
     Dim lns, cols As Integer
     Dim i, j As Long
@@ -277,25 +282,40 @@ Public Function replaceWithTable(ByRef arr() As Variant, ByVal ReplaceKey As Str
     
     If isOpen() Then
         While Not replaced
-            this.Doc.Application.Selection.Find.Text = ReplaceKey
-            this.Doc.Application.Selection.Find.Execute
-            If this.Doc.Application.Selection.Find.Found Then
+            If Not tableExist Then
+                this.Doc.Application.Selection.Find.Text = ReplaceKey
+                this.Doc.Application.Selection.Find.Execute
+            End If
+            If this.Doc.Application.Selection.Find.Found Or tableExist Then
                 'Cria a tabela
-                lns = UBound(arr, 1)
-                Set tbl = this.Doc.tables.Add(this.Doc.Application.Selection.Range, lns, cols)
-                tbl.Borders.Enable = True
+                If tableHasHeader Then
+                    lns = UBound(arr, 1)
+                Else
+                    lns = UBound(arr, 1) - 1
+                End If
+                
+                If tableExist Then
+                    Set tbl = this.Doc.Tables(CInt(ReplaceKey))
+                    
+                    For i = tbl.Rows.Count To lns - 1
+                        tbl.Rows.Add
+                    Next i
+                Else
+                    Set tbl = this.Doc.Tables.Add(this.Doc.Application.Selection.Range, lns, cols)
+                    tbl.Borders.Enable = True
+                End If
                 
                 For i = LBound(arr, 1) To lns
                     For j = LBound(arr, 2) To cols
                         tbl.cell(i, j).Range.Text = arr(i, j)
                         'Formata Header
-                        If i = 1 Then
+                        If i = 1 And tableHasHeader And Not tableExist Then
                             tbl.cell(i, j).Shading.BackgroundPatternColor = HeaderTableColor
                             tbl.cell(i, j).Range.bold = True
                             tbl.cell(i, j).Range.Font.TextColor = HeaderFontColor
                             tbl.cell(i, j).Range.ParagraphFormat.alignment = HeaderAlignment
                         Else
-                            If Not semTemas Then
+                            If Not semTemas And Not tableExist Then
                                 tbl.cell(i, j).Shading.BackgroundPatternColor = columnsTheme(j).backColor
                                 tbl.cell(i, j).Range.bold = columnsTheme(j).bold
                                 tbl.cell(i, j).Range.Font.TextColor = columnsTheme(j).color
@@ -304,17 +324,22 @@ Public Function replaceWithTable(ByRef arr() As Variant, ByVal ReplaceKey As Str
                         End If
                     Next j
                     ''Aplica os espaçamentos da tabela
-                    With tbl.Rows(i).Range.ParagraphFormat
-                        .spaceAfter = 0
-                        .spaceBefore = 0
-                        .lineSpacingRule = wdLineSpaceSingle
-                    End With
+                    If Not tableExist Then
+                        With tbl.Rows(i).Range.ParagraphFormat
+                            .spaceAfter = 0
+                            .spaceBefore = 0
+                            .lineSpacingRule = wdLineSpaceSingle
+                        End With
+                    End If
                 Next i
                 
                 ''organiza a tabela
-                tbl.Rows.alignment = wdAlignRowCenter
-                tbl.Columns.AutoFit
+                If Not tableExist Then
+                    tbl.Rows.alignment = wdAlignRowCenter
+                    tbl.Columns.AutoFit
+                End If
                 
+                If tableExist Then replaced = True
                 Set tbl = Nothing
             Else
                 replaced = True
