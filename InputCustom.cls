@@ -18,7 +18,8 @@ Public Function construtor(ByRef vRotulo As MSForms.label, ByRef vLine As MSForm
                             ByRef control As MSForms.control, ByVal backgroundColor As Long, _
                             ByVal captionColor As Long, ByVal captionBold As Boolean, _
                             Optional backStyle As Integer = -1, Optional borderStyle As Integer = -1, _
-                            Optional borderColor As Long = -1, Optional restChars As String = "")
+                            Optional borderColor As Long = -1, Optional restChars As String = "", _
+                            Optional typeInput As String = "none")
 
     Set rotulo = New CustomLabel
     rotulo.construtor vRotulo, backgroundColor, captionColor, captionBold, backStyle, borderStyle, borderColor, _
@@ -40,7 +41,7 @@ Public Function construtor(ByRef vRotulo As MSForms.label, ByRef vLine As MSForm
     If TypeName(control) = "TextBox" Then
         Set txtbox = control
         Set txtboxValidate = New TextBoxValidate
-        txtboxValidate.construtor txtbox, restChars
+        txtboxValidate.construtor txtbox, restChars, typeInput
         
         txtbox.borderStyle = fmBorderStyleNone
         txtbox.backStyle = fmBackStyleTransparent
