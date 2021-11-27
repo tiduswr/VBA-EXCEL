@@ -30,7 +30,7 @@ End Function
 Public Function disconnect()
     If DBIsOpen Then
         CurrentDb.Close
-        If rs <> Nothing Then rs.Close
+        If Not rs Is Nothing Then rs.Close
         
         Set rs = Nothing
         Set CurrentDb = Nothing
@@ -39,15 +39,15 @@ Public Function disconnect()
 End Function
 
 Public Function getRecordSet() As ADODB.Recordset
-    getRecordSet = rs
+    Set getRecordSet = rs
 End Function
 
 Public Function getRecordSetAsArray() As Variant()
     
-    If rs = Nothing Then Exit Function
+    If rs Is Nothing Then Exit Function
     
     Dim i, j As Integer
-    Dim tblArray() As Variant: ReDim tblArray(0 To rs.RecordCount - 1, 0 To rs.Fields - 1) As Variant
+    Dim tblArray() As Variant: ReDim tblArray(0 To rs.RecordCount - 1, 0 To rs.Fields.count - 1) As Variant
     
     With rs
         .MoveLast
@@ -71,7 +71,7 @@ Public Function createRecordsetByQuery(ByVal query As String) As Boolean
         Exit Function
     End If
     
-    If rs <> Nothing Then
+    If Not rs Is Nothing Then
         rs.Close
         Set rs = Nothing
     End If
@@ -86,7 +86,7 @@ End Function
 
 Public Function getRSCount() As Integer
     
-    If Not DBIsOpen Or rs = Nothing Then Exit Function
+    If Not DBIsOpen Or rs Is Nothing Then Exit Function
 
     On Error GoTo handleError
     rs.MoveLast
@@ -104,7 +104,7 @@ End Function
 
 Public Function getRSColumnCount() As Integer
 
-    If Not DBIsOpen Or rs = Nothing Then Exit Function
+    If Not DBIsOpen Or rs Is Nothing Then Exit Function
 
     On Error GoTo handleError
     rs.MoveLast
@@ -198,7 +198,7 @@ On Error GoTo handleError
     
     insertQry = "INSERT INTO " & table & "(" & CStr(columns) & ") VALUES(" & valueStr & ")"
     
-    CurrentDb.Execute insertQry, dbFailOnError
+    CurrentDb.Execute insertQry
     
     insert = True
     
@@ -223,7 +223,7 @@ On Error GoTo handleError
         Exit Function
     End If
     
-    CurrentDb.Execute qry, dbFailOnError
+    CurrentDb.Execute qry
     delete = True
     Exit Function
     
@@ -246,12 +246,12 @@ Public Function tableContain(table As String, searchCriteria As Variant, searchC
     
     tableContain = (Not auxRs.EOF) And (auxRs.RecordCount <> 0)
     
-    If auxRs <> Nothing Then auxRs.Close
+    If Not auxRs Is Nothing Then auxRs.Close
     Set auxRs = Nothing
     Exit Function
     
 handleError:
-    If auxRs <> Nothing Then auxRs.Close
+    If Not auxRs Is Nothing Then auxRs.Close
     Set auxRs = Nothing
     tableContain = False
 End Function
