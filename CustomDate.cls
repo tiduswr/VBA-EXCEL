@@ -74,6 +74,10 @@ End Function
 
 Public Function compareTo_Days(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer) As Long
     If Not this.isInitialized Then Exit Function
+    If Not isValid(dia, mes, ano) Then
+        Exit Function
+    End If
+    
     Dim iDias, fDias, iAno As Long
     Dim dif_anos As Long: dif_anos = 0
     Dim i As Long
@@ -115,6 +119,10 @@ End Function
 
 Public Function compareTo_Years(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer) As Integer
     If Not this.isInitialized Then Exit Function
+    If Not isValid(dia, mes, ano) Then
+        Exit Function
+    End If
+    
     Dim totdias As Long: totdias = compareTo_Days(dia, mes, ano)
     Dim iAno As Integer: iAno = this.dataObjeto.ano
     compareTo_Years = 0
@@ -139,6 +147,10 @@ End Function
 Public Function compareTo_Month(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer, _
                                     Optional diasRestantes As Boolean = False) As Integer
     If Not this.isInitialized Then Exit Function
+    If Not isValid(dia, mes, ano) Then
+        Exit Function
+    End If
+    
     Dim totdias As Long: totdias = compareTo_Days(dia, mes, ano)
     Dim iAno As Integer: iAno = this.dataObjeto.ano
     Dim i, init, fim As Integer
@@ -175,6 +187,10 @@ End Function
 Public Function compareTo_CompleteDate(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer, _
                                         Optional formatString As String = "%y anos, %m meses e %d dias") As String
     If Not this.isInitialized Then Exit Function
+    If Not isValid(dia, mes, ano) Then
+        Exit Function
+    End If
+    
     Dim anos, meses, dias, aux As Integer
     
     anos = compareTo_Years(dia, mes, ano)
