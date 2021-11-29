@@ -27,7 +27,8 @@ End Type
 Private calendConstruido As Boolean
 Private this As CustomDateStructure
 
-Public Function construtor(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer) As Boolean
+Public Function construtor(ByVal arg As Date) As Boolean
+    Dim d As DateStructure: d = dateToStructureDate(arg)
     If Not calendConstruido Then
         With this.diasCalend
             .bissexto = Array(0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
@@ -36,15 +37,14 @@ Public Function construtor(ByVal dia As Integer, ByVal mes As Integer, ByVal ano
         calendConstruido = True
     End If
     
-    If Not isValid(dia, mes, ano) Then
+    If Not isValid(d.dia, d.mes, d.ano) Then
         construtor = False
         Exit Function
     End If
-    
     With this.dataObjeto
-        .dia = dia
-        .mes = mes
-        .ano = ano
+        .dia = d.dia
+        .mes = d.mes
+        .ano = d.ano
     End With
     this.isInitialized = True
     construtor = True
@@ -65,6 +65,27 @@ Private Function isValid(ByVal dia As Integer, ByVal mes As Integer, ByVal ano A
     isValid = True
 End Function
 
+Private Function dateToStructureDate(ByVal arg As Date) As DateStructure
+    With dateToStructureDate
+        .dia = Day(arg)
+        .mes = Month(arg)
+        .ano = Year(arg)
+    End With
+End Function
+
+Public Function setDate(ByVal arg As Date) As Boolean
+    Dim d As DateStructure: d = dateToStructureDate(arg)
+    If Not isValid(d.dia, d.mes, d.ano) Then
+        setDate = False
+        Exit Function
+    End If
+    With this.dataObjeto
+        .dia = d.dia
+        .mes = d.mes
+        .ano = d.ano
+    End With
+End Function
+
 Public Function getDate() As Date
     If Not this.isInitialized Then Exit Function
     With this.dataObjeto
@@ -72,9 +93,10 @@ Public Function getDate() As Date
     End With
 End Function
 
-Public Function compareTo_Days(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer) As Long
+Public Function compareTo_Days(ByVal arg As Date) As Long
+    Dim d As DateStructure: d = dateToStructureDate(arg)
     If Not this.isInitialized Then Exit Function
-    If Not isValid(dia, mes, ano) Then
+    If Not isValid(d.dia, d.mes, d.ano) Then
         Exit Function
     End If
     
@@ -93,9 +115,9 @@ Public Function compareTo_Days(ByVal dia As Integer, ByVal mes As Integer, ByVal
         End If
     Next i
     
-    fDias = dia
-    dbissexto = isBissexto(ano)
-    For i = mes - 1 To 1 Step -1
+    fDias = d.dia
+    dbissexto = isBissexto(d.ano)
+    For i = d.mes - 1 To 1 Step -1
         If dbissexto Then
             fDias = fDias + this.diasCalend.bissexto(i)
         Else
@@ -104,7 +126,7 @@ Public Function compareTo_Days(ByVal dia As Integer, ByVal mes As Integer, ByVal
     Next i
     
     iAno = this.dataObjeto.ano
-    Do While iAno < ano
+    Do While iAno < d.ano
         If isBissexto(iAno) Then
             dif_anos = dif_anos + 366
         Else
@@ -117,17 +139,18 @@ Public Function compareTo_Days(ByVal dia As Integer, ByVal mes As Integer, ByVal
     
 End Function
 
-Public Function compareTo_Years(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer) As Integer
+Public Function compareTo_Years(ByVal arg As Date) As Integer
+    Dim d As DateStructure: d = dateToStructureDate(arg)
     If Not this.isInitialized Then Exit Function
-    If Not isValid(dia, mes, ano) Then
+    If Not isValid(d.dia, d.mes, d.ano) Then
         Exit Function
     End If
     
-    Dim totdias As Long: totdias = compareTo_Days(dia, mes, ano)
+    Dim totdias As Long: totdias = compareTo_Days(arg)
     Dim iAno As Integer: iAno = this.dataObjeto.ano
     compareTo_Years = 0
     
-    Do While iAno < ano
+    Do While iAno < d.ano
         If isBissexto(iAno) Then
             If totdias >= 366 Then
                 totdias = totdias - 366
@@ -144,60 +167,60 @@ Public Function compareTo_Years(ByVal dia As Integer, ByVal mes As Integer, ByVa
     
 End Function
 
-Public Function compareTo_Month(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer, _
-                                    Optional diasRestantes As Boolean = False) As Integer
+Public Function compareTo_Month(ByVal arg As Date, Optional diasRestantes As Boolean = False) As Integer
+    Dim d As DateStructure: d = dateToStructureDate(arg)
     If Not this.isInitialized Then Exit Function
-    If Not isValid(dia, mes, ano) Then
+    If Not isValid(d.dia, d.mes, d.ano) Then
         Exit Function
     End If
     
-    Dim totdias As Long: totdias = compareTo_Days(dia, mes, ano)
+    Dim totdias As Long: totdias = compareTo_Days(arg)
     Dim iAno As Integer: iAno = this.dataObjeto.ano
     Dim i, init, fim As Integer
-    Dim diasDesconto As Integer
+    Dim diasdesconto As Integer
     init = this.dataObjeto.mes
-    If iAno <> ano Then
+    If iAno <> d.ano Then
         fim = 12
     Else
-        fim = mes - 1
+        fim = d.mes - 1
     End If
     
-    Do While iAno <= ano
+    Do While iAno <= d.ano
         For i = init To fim
             If isBissexto(iAno) Then
-                diasDesconto = this.diasCalend.bissexto(i)
+                diasdesconto = this.diasCalend.bissexto(i)
             Else
-                diasDesconto = this.diasCalend.normal(i)
+                diasdesconto = this.diasCalend.normal(i)
             End If
             
-            If totdias >= diasDesconto Then
-                totdias = totdias - diasDesconto
+            If totdias >= diasdesconto Then
+                totdias = totdias - diasdesconto
                 compareTo_Month = compareTo_Month + 1
             End If
         Next i
         init = 1
         iAno = iAno + 1
-        If ano = iAno Then fim = mes
+        If d.ano = iAno Then fim = d.mes
     Loop
     
     If diasRestantes Then compareTo_Month = totdias
     
 End Function
 
-Public Function compareTo_CompleteDate(ByVal dia As Integer, ByVal mes As Integer, ByVal ano As Integer, _
-                                        Optional formatString As String = "%y anos, %m meses e %d dias") As String
+Public Function compareTo_CompleteDate(ByVal arg As Date, Optional formatString As String = "%y anos, %m meses e %d dias") As String
+    Dim d As DateStructure: d = dateToStructureDate(arg)
     If Not this.isInitialized Then Exit Function
-    If Not isValid(dia, mes, ano) Then
+    If Not isValid(d.dia, d.mes, d.ano) Then
         Exit Function
     End If
     
     Dim anos, meses, dias, aux As Integer
     
-    anos = compareTo_Years(dia, mes, ano)
+    anos = compareTo_Years(arg)
     aux = this.dataObjeto.ano
-    this.dataObjeto.ano = ano
-    meses = compareTo_Month(dia, mes, ano)
-    dias = compareTo_Month(dia, mes, ano, True)
+    this.dataObjeto.ano = d.ano
+    meses = compareTo_Month(arg)
+    dias = compareTo_Month(arg, True)
     this.dataObjeto.ano = aux
     
     compareTo_CompleteDate = Replace(formatString, "%y", CStr(anos))
@@ -205,3 +228,64 @@ Public Function compareTo_CompleteDate(ByVal dia As Integer, ByVal mes As Intege
     compareTo_CompleteDate = Replace(compareTo_CompleteDate, "%d", CStr(dias))
     
 End Function
+
+Public Function sumDays(ByVal qtd As Long) As Date
+    If Not this.isInitialized Then Exit Function
+    Dim diasSomar As Integer
+    qtd = qtd + this.dataObjeto.dia
+    
+    While qtd > 0
+        With this.dataObjeto
+            If isBissexto(.ano) Then
+                diasSomar = this.diasCalend.bissexto(.mes)
+            Else
+                diasSomar = this.diasCalend.normal(.mes)
+            End If
+            
+            If qtd > diasSomar Then
+                .dia = 1
+                If .mes < 12 Then
+                    .mes = .mes + 1
+                Else
+                    .mes = 1
+                    .ano = .ano + 1
+                End If
+                qtd = qtd - diasSomar
+            Else
+                .dia = qtd
+                qtd = 0
+            End If
+        End With
+    Wend
+    sumDays = getDate
+End Function
+
+Public Function sumMonths(ByVal qtd As Long) As Date
+    Dim i, m, y As Long
+    Dim anos, meses As Integer
+    Dim totDays, diasSomar As Long
+    
+    meses = this.dataObjeto.mes
+    anos = this.dataObjeto.ano
+    
+    For i = 1 To qtd
+        If isBissexto(anos) Then
+            diasSomar = this.diasCalend.bissexto(meses)
+        Else
+            diasSomar = this.diasCalend.normal(meses)
+        End If
+        If meses < 12 Then
+            meses = meses + 1
+        Else
+            anos = anos + 1
+            meses = 1
+        End If
+        totDays = totDays + diasSomar
+    Next i
+    sumMonths = sumDays(totDays)
+End Function
+
+Public Function sumYears(ByVal qtd As Integer) As Date
+    sumYears = sumMonths(qtd * 12)
+End Function
+
